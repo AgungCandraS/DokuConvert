@@ -1,0 +1,25 @@
+[project]
+name = "docuconvert-desktop"
+version = "0.1.0"
+description = "A local-first desktop document converter"
+requires-python = ">=3.12"
+dependencies = [
+    "PySide6>=6.7",
+    "PyMuPDF>=1.24",
+    "Pillow>=10.0",
+    "pdf2docx>=0.5.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+packaging = ["pyinstaller>=6.14"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.setuptools.package-data]
+"app.ui" = ["resources/icons/*"]

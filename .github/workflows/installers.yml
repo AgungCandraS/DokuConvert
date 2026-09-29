@@ -69,9 +69,25 @@ jobs:
             --working-directory $testDirectory
           if ($LASTEXITCODE -ne 0) { throw "Frozen app Windows gagal dibuka." }
           $uninstaller = Join-Path $testDirectory "unins000.exe"
-          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
-          if ($LASTEXITCODE -ne 0) { throw "Uninstall Windows gagal (exit code $LASTEXITCODE)." }
+          $uninstallLog = Join-Path $env:RUNNER_TEMP "docuconvert-uninstall-smoke.log"
+          $uninstallArguments = @(
+            "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+            "/LOG=`"$uninstallLog`""
+          )
+          $uninstallProcess = Start-Process -FilePath $uninstaller `
+            -ArgumentList $uninstallArguments -Wait -PassThru
+          if ($uninstallProcess.ExitCode -ne 0) {
+            throw "Uninstall Windows gagal (exit code $($uninstallProcess.ExitCode))."
+          }
+          $uninstallDeadline = (Get-Date).AddSeconds(30)
+          while ((Test-Path -LiteralPath (Join-Path $testDirectory "DocuConvert.exe")) -and
+            (Get-Date) -lt $uninstallDeadline) {
+            Start-Sleep -Seconds 1
+          }
           if (Test-Path -LiteralPath (Join-Path $testDirectory "DocuConvert.exe")) {
+            if (Test-Path -LiteralPath $uninstallLog) {
+              Get-Content -LiteralPath $uninstallLog -Tail 80
+            }
             throw "Executable masih tertinggal setelah uninstall Windows."
           }
       - uses: actions/upload-artifact@v7

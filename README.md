@@ -179,6 +179,10 @@ Workflow [Build desktop installers](.github/workflows/installers.yml) membangun 
 - **Rilis:** setelah hasil uji ditinjau, push tag versi seperti `v0.1.0`. Workflow tag akan membangun ulang semua paket dan membuat GitHub Release.
 - **Unduhan pengguna:** bagikan halaman Releases; pengguna memilih file berdasarkan OS dan arsitektur.
 
+### Hasil validasi installer
+
+Workflow [run #36604467749](https://github.com/AgungCandraS/DokuConvert/actions/runs/36604467749) lulus pada 29 September 2026 (UTC) untuk Windows x64, macOS Intel, macOS Apple Silicon, dan Ubuntu 22.04 amd64. Smoke test Windows memasang installer ke lokasi default, membuka aplikasi, lalu menghapusnya; smoke test macOS memasang paket dan memeriksa startup aplikasi; smoke test Linux memasang `.deb` pada image Ubuntu bersih, memeriksa startup, lalu menghapus paket. Installer dan checksum tersedia sebagai artifact pada run tersebut—belum sebagai GitHub Release.
+
 Workflow tidak mengubah satu build menjadi paket lintas OS. Signing juga belum dikonfigurasi: rilis Windows memerlukan code-signing certificate, sedangkan macOS perlu Developer ID signing dan notarization agar peringatan OS berkurang. Rahasia signing harus ditambahkan sebagai GitHub Actions secrets; jangan commit credential ke repository.
 
 Docker hanya dipakai job Linux untuk memasang dan menjalankan `.deb` di image Ubuntu 22.04 bersih tanpa akses jaringan saat smoke test. Docker bukan cara menjalankan GUI desktop untuk pengguna dan tidak menggantikan runner macOS/Windows.
@@ -191,7 +195,7 @@ Docker hanya dipakai job Linux untuk memasang dan menjalankan `.deb` di image Ub
 4. Pastikan dokumen input/output pengguna tetap ada setelah uninstall.
 5. Lengkapi signing/notarization dan tinjau kewajiban distribusi dependency.
 
-CI saat ini menjalankan install/start/uninstall smoke checks, bukan pengujian konversi dengan fixture pada semua OS. Build lokal Windows sudah pernah diuji sebagai executable frozen; paket installer native tetap perlu diverifikasi lewat workflow.
+CI saat ini memverifikasi build, instalasi, startup aplikasi, serta uninstall pada target yang relevan; CI belum menjalankan pengujian konversi dengan fixture pada semua OS. Untuk rilis stabil, tetap lakukan acceptance test konversi dan data pengguna pada VM bersih.
 
 ## Lisensi dan pemberitahuan pihak ketiga
 

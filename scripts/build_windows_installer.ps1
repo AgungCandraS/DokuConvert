@@ -23,7 +23,18 @@ if (Test-Path -LiteralPath $OutputDirectory) {
 }
 
 $portableBuilder = Join-Path $PSScriptRoot "build_portable.ps1"
-& $portableBuilder -LibreOfficeSource $LibreOfficeSource -OutputDirectory $stageDirectory
+$pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $pythonCommand) {
+    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue | Select-Object -First 1
+}
+$portableArguments = @{
+    LibreOfficeSource = $LibreOfficeSource
+    OutputDirectory = $stageDirectory
+}
+if ($pythonCommand) {
+    $portableArguments.PythonExecutable = $pythonCommand.Source
+}
+& $portableBuilder @portableArguments
 if ($LASTEXITCODE -ne 0) {
     throw "Build payload Windows gagal (exit code $LASTEXITCODE)."
 }

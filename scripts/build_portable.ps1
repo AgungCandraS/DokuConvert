@@ -14,10 +14,23 @@ $libreOfficeSourcePath = (Resolve-Path -LiteralPath $LibreOfficeSource).Path
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
 if (-not $PythonExecutable) {
-    $PythonExecutable = Join-Path $projectRoot ".venv\Scripts\python.exe"
+    $virtualenvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
+    if (Test-Path -LiteralPath $virtualenvPython -PathType Leaf) {
+        $PythonExecutable = $virtualenvPython
+    } else {
+        $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if (-not $pythonCommand) {
+            $pythonCommand = Get-Command python -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+        }
+        if ($pythonCommand) {
+            $PythonExecutable = $pythonCommand.Source
+        }
+    }
 }
-if (-not (Test-Path -LiteralPath $PythonExecutable -PathType Leaf)) {
-    throw "Python virtualenv tidak ditemukan: $PythonExecutable. Buat .venv dan pasang dependency project dahulu."
+if (-not $PythonExecutable -or -not (Test-Path -LiteralPath $PythonExecutable -PathType Leaf)) {
+    throw "Python tidak ditemukan. Buat .venv atau pasang Python 3.12+ pada PATH sebelum build."
 }
 
 if (-not $OutputDirectory) {

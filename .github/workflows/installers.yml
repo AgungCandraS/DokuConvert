@@ -42,9 +42,15 @@ jobs:
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
           $installer = Get-ChildItem -LiteralPath $release.FullName -Filter "DocuConvert-Setup-*.exe" -File |
             Select-Object -First 1
-          $testDirectory = Join-Path $env:RUNNER_TEMP "docuconvert-installer-smoke"
-          & $installer.FullName /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$testDirectory"
+          # Test the same per-user default location the installer presents to users.
+          $testDirectory = Join-Path $env:LOCALAPPDATA "Programs\DocuConvert"
+          $installLog = Join-Path $env:RUNNER_TEMP "docuconvert-installer-smoke.log"
+          & $installer.FullName /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/LOG=$installLog"
           if ($LASTEXITCODE -ne 0) { throw "Silent install gagal (exit code $LASTEXITCODE)." }
+          if (-not (Test-Path -LiteralPath (Join-Path $testDirectory "DocuConvert.exe"))) {
+            Get-Content -LiteralPath $installLog -Tail 80
+            throw "Installer selesai tanpa memasang DocuConvert.exe ke lokasi default $testDirectory."
+          }
           python scripts/smoke_frozen_app.py (Join-Path $testDirectory "DocuConvert.exe") `
             --working-directory $testDirectory
           if ($LASTEXITCODE -ne 0) { throw "Frozen app Windows gagal dibuka." }

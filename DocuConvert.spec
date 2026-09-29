@@ -1,4 +1,5 @@
-# PyInstaller one-folder build for the Windows portable distribution.
+# PyInstaller one-folder build shared by the native per-OS release jobs.
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all
@@ -38,7 +39,11 @@ exe = EXE(
     upx=False,
     console=False,
     disable_windowed_traceback=False,
-    icon=str(project_root / "app" / "ui" / "resources" / "icons" / "app-icon.ico"),
+    icon=(
+        str(project_root / "app" / "ui" / "resources" / "icons" / "app-icon.ico")
+        if sys.platform == "win32"
+        else None
+    ),
 )
 coll = COLLECT(
     exe,
@@ -48,3 +53,16 @@ coll = COLLECT(
     upx=False,
     name="DocuConvert",
 )
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="DocuConvert.app",
+        bundle_identifier="com.docuconvert.desktop",
+        info_plist={
+            "CFBundleName": "DocuConvert",
+            "CFBundleDisplayName": "DocuConvert",
+            "CFBundleShortVersionString": "0.1.0",
+            "NSHighResolutionCapable": True,
+        },
+    )

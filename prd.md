@@ -4,7 +4,7 @@
 
 **DocuConvert Desktop** adalah aplikasi desktop lokal untuk mengonversi dan mengelola dokumen, dengan pengalaman penggunaan sederhana seperti iLovePDF. Pengguna dapat menarik file ke aplikasi, memilih operasi, menjalankan proses, lalu menyimpan hasilnya tanpa perlu mengunggah dokumen ke server.
 
-Versi awal ditargetkan untuk Windows dan menggunakan Python, PySide6, serta LibreOffice sebagai mesin konversi dokumen Office ke PDF.
+Produk ditujukan untuk Windows, macOS, dan Linux. Pengguna mengunduh installer atau paket resmi untuk OS-nya, memasang aplikasi, lalu menjalankan DocuConvert seperti aplikasi desktop biasa. Pemrosesan dokumen dilakukan di perangkat; pengguna tidak perlu memasang Python, menjalankan terminal, atau memahami komponen teknis aplikasi.
 
 ## 2. Latar Belakang dan Masalah
 
@@ -29,7 +29,8 @@ Menjadi aplikasi desktop converter dokumen yang cepat, privat, mudah digunakan, 
 1. Menyediakan konversi dokumen lokal tanpa upload ke server.
 2. Menyederhanakan alur konversi menjadi beberapa langkah yang jelas.
 3. Menyediakan fondasi modular agar format dan fitur baru mudah ditambahkan.
-4. Menghasilkan aplikasi yang dapat dikemas menjadi installer Windows.
+4. Menyediakan paket distribusi yang mudah dipasang untuk setiap OS yang didukung.
+5. Menyertakan atau menyiapkan dependency aplikasi secara transparan agar pengguna tidak perlu mengatur runtime secara manual.
 
 ### Sasaran terukur MVP
 
@@ -38,6 +39,7 @@ Menjadi aplikasi desktop converter dokumen yang cepat, privat, mudah digunakan, 
 - Aplikasi tetap responsif ketika proses konversi sedang berjalan.
 - Tidak ada file pengguna yang dikirim keluar dari komputer.
 - Semua error utama ditampilkan dalam bahasa yang mudah dipahami.
+- Pengguna awam dapat mengunduh, memasang, dan menjalankan aplikasi tanpa alat developer atau langkah setup teknis.
 
 ## 5. Sasaran Pengguna
 
@@ -100,6 +102,8 @@ Membutuhkan pemrosesan invoice, proposal, formulir, dan dokumen pelanggan secara
 - membuka folder output setelah selesai;
 - riwayat proses lokal;
 - mode terang dan gelap mengikuti preferensi aplikasi.
+- installer/paket distribusi untuk Windows, macOS, dan Linux yang masuk daftar platform resmi.
+- runtime aplikasi dan dependency yang diperlukan tersedia melalui paket atau proses instalasi resmi; tidak meminta pengguna memasang Python atau dependency manual.
 
 ### 6.2 Fitur fase berikutnya
 
@@ -112,7 +116,7 @@ Membutuhkan pemrosesan invoice, proposal, formulir, dan dokumen pelanggan secara
 - dukungan CSV, TXT, HTML, EPUB, dan format gambar tambahan;
 - plugin converter pihak ketiga;
 - update otomatis;
-- versi macOS dan Linux;
+- dukungan OS di luar platform resmi yang ditetapkan;
 - telemetri opt-in yang tidak mengandung isi dokumen.
 
 ### 6.3 Di luar scope MVP
@@ -125,6 +129,16 @@ Membutuhkan pemrosesan invoice, proposal, formulir, dan dokumen pelanggan secara
 - layanan API publik;
 - jaminan kesetiaan 100% pada konversi PDF ke DOCX;
 - pemrosesan dokumen yang dilindungi DRM atau password tanpa izin pengguna.
+
+### 6.4 Target distribusi
+
+- **Windows:** installer per-user `.exe` untuk Windows x64; membuat Start Menu shortcut dan uninstaller.
+- **macOS:** installer `.pkg` terpisah untuk Intel x64 dan Apple Silicon arm64; signing dan notarization diperlukan sebelum distribusi publik yang mulus.
+- **Linux:** paket `.deb` untuk Ubuntu 22.04+/Debian 12+ x86_64; dependency LibreOffice dan runtime desktop dikelola oleh package manager.
+- Setiap OS dan arsitektur memiliki artifact build tersendiri. Satu file `.exe` bukan paket universal untuk Windows, macOS, dan Linux.
+- Package mencakup runtime aplikasi dan dependency yang dibutuhkan, atau menjalankan instalasi dependency tanpa meminta pengguna melakukan setup manual.
+- LibreOffice tidak boleh menjadi prasyarat tersembunyi. Untuk konversi Office, keputusan bundling, adapter alternatif, ukuran paket, dan kepatuhan lisensi harus diselesaikan sebelum rilis; jika suatu fitur memang belum tersedia, UI menyatakannya sebelum pengguna mengandalkan fitur tersebut.
+- Setelah instalasi selesai, fitur yang dinyatakan tersedia harus bisa digunakan tanpa koneksi internet. Internet hanya diperlukan untuk mengunduh installer dan, bila kelak ditambahkan, update yang dipilih pengguna.
 
 ## 7. Prinsip Produk
 
@@ -157,8 +171,20 @@ Membutuhkan pemrosesan invoice, proposal, formulir, dan dokumen pelanggan secara
 - Sebagai pengguna, saya ingin membatalkan proses yang sedang berjalan.
 - Sebagai pengguna, saya ingin file asli tetap utuh.
 - Sebagai pengguna, saya ingin tahu jika file rusak, password-protected, atau tidak didukung.
+- Sebagai pengguna nonteknis, saya ingin mengunduh paket untuk OS saya, menginstalnya, lalu langsung menggunakan fitur yang tersedia tanpa memasang runtime atau dependency sendiri.
 
 ## 9. Alur Pengguna Utama
+
+### 9.0 Unduh, instal, dan mulai menggunakan aplikasi
+
+1. Pengguna membuka halaman unduhan resmi dan memilih paket sesuai OS/perangkatnya.
+2. Pengguna mengunduh installer/paket; halaman unduhan menyebutkan versi OS dan arsitektur yang didukung.
+3. Pengguna menjalankan installer atau membuka paket distribusi, menyelesaikan langkah instalasi standar, lalu memasang DocuConvert.
+4. Installer menyiapkan runtime, dependency, shortcut/menu aplikasi, dan uninstaller sesuai OS; pengguna tidak perlu membuka terminal atau memasang Python/LibreOffice secara manual.
+5. Pengguna membuka DocuConvert dari launcher/menu aplikasi dan dapat langsung menggunakan fitur yang tersedia.
+6. Jika dependency tidak dapat dibundel karena ukuran, lisensi, atau batasan OS, aplikasi mengidentifikasinya dengan jelas dan menawarkan instruksi sederhana. Kondisi ini harus diselesaikan sebelum fitur terkait dijanjikan sebagai siap pakai.
+
+Installer dapat diunduh melalui internet, tetapi pemrosesan file setelah instalasi harus berjalan lokal tanpa mengharuskan koneksi internet.
 
 ### 9.1 DOCX ke PDF
 
@@ -268,6 +294,14 @@ Dengan struktur ini, penambahan converter baru tidak memerlukan perubahan besar 
 - Cancellation harus menghentikan proses turunan dengan aman.
 - File sementara dibersihkan setelah job selesai atau dibatalkan.
 
+### 10.5 Packaging dan platform
+
+- Kode aplikasi dan converter memisahkan logika lintas platform dari integrasi khusus OS.
+- Build release dibuat per OS pada environment build yang sesuai dan diuji pada OS target; artifact satu OS tidak dianggap dapat menggantikan artifact OS lain.
+- Installer menangani runtime, resource Qt, ikon, metadata aplikasi, shortcut/launcher, lokasi konfigurasi, dan uninstall sesuai konvensi OS.
+- Deteksi dependency memberi status dan tindakan yang jelas, bukan stack trace atau instruksi terminal kepada pengguna umum.
+- Build release diuji dari instalasi bersih, bukan hanya dari environment developer.
+
 ## 11. Tech Stack
 
 ### Wajib
@@ -280,7 +314,8 @@ Dengan struktur ini, penambahan converter baru tidak memerlukan perubahan besar 
 - **pypdf** — operasi PDF sederhana jika dibutuhkan sebagai alternatif.
 - **pytest** — unit test dan integration test.
 - **Ruff** — linting dan formatting.
-- **PyInstaller** — packaging executable Windows.
+- **Packaging tool** — pilih tool yang menghasilkan executable/paket untuk tiap OS; PyInstaller dapat dievaluasi, tetapi satu build tidak diasumsikan berjalan lintas OS.
+- **Installer builder per OS** — dipilih setelah strategi bundling, lisensi dependency, dan baseline platform ditetapkan.
 
 ### Opsional atau perlu evaluasi lisensi
 
@@ -418,7 +453,16 @@ Riwayat lokal hanya menyimpan metadata job dan lokasi file, bukan isi dokumen.
 
 ### FR-012 — Deteksi dependency
 
-Aplikasi harus memeriksa instalasi LibreOffice saat startup atau saat fitur terkait dibuka, lalu memberikan instruksi jika belum tersedia.
+Aplikasi harus memeriksa dependency fitur, mengutamakan versi yang dikelola melalui distribusi resmi, dan menjelaskan fitur/tindakan yang tersedia jika dependency tidak ditemukan. LibreOffice tidak boleh menjadi prasyarat tersembunyi yang mengharuskan pengguna memasang komponen secara manual.
+
+### FR-013 — Unduhan, instalasi, dan first run
+
+- Pengguna dapat memilih dan mengunduh paket sesuai OS dan arsitektur yang didukung dari halaman distribusi resmi.
+- Instalasi tidak memerlukan Python, pip, terminal, atau pengetahuan teknis.
+- Paket menyediakan runtime dan resource aplikasi serta shortcut/launcher dan mekanisme uninstall sesuai OS.
+- Fitur yang dipasarkan sebagai tersedia dapat digunakan setelah instalasi tanpa dependency tersembunyi atau koneksi internet.
+- Jika dependency opsional tidak tersedia, aplikasi menjelaskan fitur yang terdampak dan tindakan yang mudah dilakukan; fitur lain yang tersedia tetap dapat digunakan.
+- Setiap paket memiliki versi, catatan rilis, checksum, dan informasi OS/arsitektur minimum.
 
 ## 15. Requirement Nonfungsional
 
@@ -428,6 +472,7 @@ Aplikasi harus memeriksa instalasi LibreOffice saat startup atau saat fitur terk
 - Startup target maksimal 3 detik pada komputer standar, tidak termasuk pemeriksaan dependency berat.
 - File kecil hingga 20 MB harus diproses tanpa langkah tambahan.
 - Beberapa job dapat diantrikan, tetapi concurrency default dibatasi agar penggunaan memori terkendali.
+- Ukuran unduhan dan kebutuhan storage installer diukur serta ditampilkan sebelum rilis; perubahan ukuran yang signifikan ditinjau.
 
 ### Keamanan
 
@@ -444,6 +489,7 @@ Aplikasi harus memeriksa instalasi LibreOffice saat startup atau saat fitur terk
 - Kegagalan satu file dalam batch tidak boleh merusak file lain.
 - Proses yang crash harus menghasilkan status failed, bukan job menggantung.
 - Aplikasi harus dapat dibuka kembali setelah proses gagal.
+- Instalasi bersih, upgrade versi yang didukung, dan uninstall diuji pada setiap OS resmi; uninstall tidak menghapus file input/output pengguna.
 
 ### Usability
 
@@ -459,6 +505,7 @@ Aplikasi harus memeriksa instalasi LibreOffice saat startup atau saat fitur terk
 - Semua converter memiliki unit test.
 - Semua operasi file penting memiliki integration test.
 - Dependency dan lisensi didokumentasikan.
+- Build packaging per OS otomatis dan tidak mencampur konfigurasi khusus platform ke dalam converter domain.
 
 ## 16. UX dan Navigasi
 
@@ -525,7 +572,7 @@ Hasil kompresi harus dibandingkan dengan file sumber. Jika hasil lebih besar, ap
 ### Phase 0 — Discovery dan fondasi
 
 - [ ] Finalisasi nama, ikon, dan identitas aplikasi.
-- [ ] Konfirmasi target OS awal: Windows 10/11 64-bit.
+- [ ] Tetapkan OS/arsitektur minimum resmi untuk Windows, macOS, dan Linux serta baseline distro Linux.
 - [ ] Inventaris dependency dan lisensi.
 - [ ] Buat repository dan aturan branching.
 - [ ] Buat konfigurasi Python, Ruff, pytest, dan logging.
@@ -580,36 +627,40 @@ Hasil kompresi harus dibandingkan dengan file sumber. Jika hasil lebih besar, ap
 - [ ] Test cancellation.
 - [ ] Test file path dengan spasi dan karakter non-ASCII.
 - [ ] Test memory dan waktu proses.
-- [ ] Uji manual pada Windows 10 dan Windows 11.
+- [ ] Uji manual pada semua OS dan versi minimum yang resmi didukung.
 
 ### Phase 6 — Packaging dan rilis
 
-- [ ] Buat build PyInstaller.
-- [ ] Tentukan apakah LibreOffice dibundel atau menjadi prerequisite.
-- [ ] Buat installer Windows.
-- [ ] Tambahkan uninstaller.
-- [ ] Buat README instalasi.
+- [x] Tentukan strategi bundling runtime dan dependency per OS; tidak ada prasyarat developer.
+- [ ] Evaluasi lisensi, ukuran, update, dan system dependency untuk setiap paket.
+- [x] Buat workflow build artifact terpisah untuk Windows, macOS, dan Linux resmi.
+- [x] Implementasikan installer/paket native, shortcut/launcher, dan mekanisme uninstall sesuai OS.
+- [ ] Siapkan code signing Windows serta signing dan notarization macOS untuk distribusi publik.
+- [ ] Buat halaman unduhan yang membantu memilih paket dan menampilkan versi/arsitektur.
+- [x] Buat panduan build dan instalasi per OS; panduan pengguna akhir yang singkat masih perlu dipoles.
 - [ ] Buat changelog.
-- [ ] Buat smoke test untuk hasil installer.
-- [ ] Siapkan signing code jika aplikasi akan didistribusikan publik.
+- [ ] Buat smoke test install, launch, fitur dasar, upgrade, dan uninstall pada mesin bersih per OS.
+- [x] Buat checksum serta metadata versi/OS/arsitektur untuk setiap artifact.
 
 ## 19. Acceptance Criteria MVP
 
 MVP dianggap selesai jika:
 
-1. Pengguna dapat menjalankan aplikasi dari installer Windows.
-2. Aplikasi dapat mendeteksi apakah LibreOffice tersedia.
-3. DOCX, XLSX, dan PPTX dapat dikonversi ke PDF.
-4. PDF dapat digabung dan dipisah.
-5. JPG/PNG dapat dikonversi menjadi PDF.
-6. PDF dapat dirender menjadi JPG/PNG.
-7. PDF ke DOCX tersedia dengan peringatan kualitas.
-8. UI tetap responsif selama proses.
-9. Job dapat dibatalkan tanpa meninggalkan file temporary yang tidak perlu.
-10. File sumber tidak tertimpa tanpa persetujuan eksplisit.
-11. Error umum ditampilkan dalam Bahasa Indonesia.
-12. Test otomatis inti berjalan sukses.
-13. Installer dapat diinstal dan dihapus pada mesin uji.
+1. Pengguna dapat mengunduh paket resmi yang sesuai OS dan arsitekturnya.
+2. Pengguna nonteknis dapat memasang dan membuka aplikasi tanpa Python, terminal, atau setup dependency manual.
+3. Instalasi bersih, shortcut/launcher, upgrade yang didukung, dan uninstall lolos smoke test pada setiap OS resmi.
+4. Uninstall tidak menghapus dokumen input maupun output pengguna.
+5. Fitur yang ditandai tersedia berjalan lokal tanpa koneksi internet setelah instalasi.
+6. Aplikasi menjelaskan dependency/fitur yang tidak tersedia sebelum pengguna memulai proses.
+7. DOCX, XLSX, dan PPTX dapat dikonversi ke PDF pada OS resmi jika fitur Office dinyatakan tersedia.
+8. PDF dapat digabung dan dipisah.
+9. JPG/PNG dapat dikonversi menjadi PDF.
+10. PDF dapat dirender menjadi JPG/PNG.
+11. PDF ke DOCX tersedia dengan peringatan kualitas.
+12. UI tetap responsif dan job dapat dibatalkan tanpa meninggalkan file temporary.
+13. File sumber tidak tertimpa tanpa persetujuan eksplisit; error umum ditampilkan dalam Bahasa Indonesia.
+14. Test otomatis inti dan smoke test installer per OS berjalan sukses.
+15. Artifact rilis menyediakan versi, OS/arsitektur minimum, catatan rilis, dan checksum.
 
 ## 20. Test Matrix Minimum
 
@@ -618,6 +669,9 @@ MVP dianggap selesai jika:
 | Office ke PDF | DOCX sederhana | PDF berhasil dibuat |
 | Office ke PDF | File dengan spasi di path | Berhasil tanpa error path |
 | Office ke PDF | LibreOffice tidak terpasang | Pesan dependency jelas |
+| Packaging | Instalasi bersih per OS | Aplikasi membuka dan fitur paket berjalan tanpa Python/terminal |
+| Packaging | Uninstall per OS | Aplikasi terhapus tanpa menghapus dokumen pengguna |
+| Offline runtime | Jalankan fitur setelah instalasi tanpa internet | Fitur yang tersedia tetap memproses lokal |
 | PDF merge | Dua PDF | Satu PDF sesuai urutan |
 | PDF split | Rentang `1-3,5` | Halaman sesuai pilihan |
 | Gambar ke PDF | JPG dan PNG | PDF valid dibuat |
@@ -633,8 +687,10 @@ MVP dianggap selesai jika:
 | Risiko | Dampak | Mitigasi |
 |---|---|---|
 | PDF ke DOCX tidak mempertahankan layout | Tinggi | Warning kualitas, adapter modular, test dokumen umum |
-| LibreOffice belum terinstal | Tinggi | Deteksi dependency dan panduan instalasi |
-| Ukuran installer besar | Sedang | Dokumentasikan prerequisite atau sediakan paket opsional |
+| Dependency eksternal belum tersedia | Tinggi | Bundling, adapter alternatif, atau nyatakan fitur tidak tersedia sebelum rilis; jangan jadikan setup manual sebagai kejutan |
+| Ukuran installer besar | Sedang | Optimalkan resource dan ukur ukuran unduhan; evaluasi paket tanpa mengaburkan dependency wajib |
+| Perbedaan perilaku OS | Tinggi | Build native per OS, abstraction layer, dan smoke/integration test pada semua OS resmi |
+| Installer diblokir peringatan OS | Sedang | Code signing/notarization untuk distribusi publik dan checksum resmi |
 | Proses berat membuat UI freeze | Tinggi | Worker thread dan queue |
 | Perbedaan versi LibreOffice | Sedang | Compatibility check dan integration test pada versi target |
 | File password-protected | Sedang | Deteksi dan minta password hanya jika fitur mendukung |
@@ -679,10 +735,12 @@ Riwayat sebaiknya disimpan sebagai SQLite ringan atau JSON metadata. Isi dokumen
 ## 24. Keputusan Produk yang Masih Harus Ditetapkan
 
 - Nama final dan branding.
-- Apakah LibreOffice dibundel dalam installer atau menjadi prerequisite.
+- Pilihan packaging tool, format artifact final, dan baseline versi/arsitektur setiap OS.
+- Strategi converter Office: bundling LibreOffice yang sesuai lisensi/ukuran atau adapter alternatif; dependency tidak boleh menjadi setup manual tersembunyi.
+- Distro Linux yang dijamin serta pilihan paket awal seperti AppImage dan/atau `.deb`.
+- Kanal distribusi resmi, code signing, notarization, dan kebijakan update aplikasi.
 - Apakah fitur PDF ke DOCX tersedia sejak MVP atau masuk fase beta.
 - Apakah aplikasi akan gratis, freemium, atau berlisensi komersial.
-- Apakah macOS dan Linux masuk roadmap resmi.
 - Apakah password PDF didukung pada rilis pertama.
 - Batas ukuran file yang direkomendasikan untuk pengalaman pengguna.
 
@@ -711,7 +769,7 @@ Urutan paling aman untuk membangun produk:
 5. Gambar ke PDF dan PDF ke gambar.
 6. Kompres PDF.
 7. PDF ke DOCX sebagai fitur dengan status beta.
-8. History, settings, logging, dan installer.
+8. History, settings, logging, lalu installer lintas platform dan uji instalasi bersih.
 9. OCR dan batch folder pada fase berikutnya.
 
 Dengan urutan ini, produk sudah memberikan manfaat nyata sejak awal, sementara bagian paling sulit—PDF ke DOCX dan OCR—dapat dikembangkan secara terisolasi tanpa mengganggu fondasi aplikasi.

@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.ui.components.common import card_frame, icon_path
+from app.ui.components.common import card_frame, default_output_directory, icon_path
 from app.ui.components.drop_zone import DropZone
 from app.ui.components.tool_card import ToolCard
 from app.ui.controllers.job_controller import JobController
@@ -304,7 +304,7 @@ class MainWindow(QMainWindow):
         form.setVerticalSpacing(14)
         output_row = QHBoxLayout()
         self.default_output = QLineEdit(
-            self.settings.value("output_directory", str(Path.home() / "Documents"))
+            self.settings.value("output_directory", default_output_directory())
         )
         self.default_output.setObjectName("inputField")
         output_row.addWidget(self.default_output, 1)
@@ -332,7 +332,7 @@ class MainWindow(QMainWindow):
         dependency_layout.addWidget(styled_label("Kebutuhan konversi Office", "sectionHeading"))
         dependency_layout.addWidget(
             styled_label(
-                "LibreOffice diperiksa otomatis. Paket portable Windows sudah menyertakannya.",
+                "Kebutuhan konversi Office diperiksa otomatis dan ditangani paket aplikasi.",
                 "mutedText",
             )
         )
@@ -427,7 +427,7 @@ class MainWindow(QMainWindow):
             name,
             initial_files=initial_files,
             output_directory=self.settings.value(
-                "output_directory", str(Path.home() / "Documents")
+                "output_directory", default_output_directory()
             ),
             open_output=self.settings.value("open_output", True, type=bool),
             libreoffice_path=self.libreoffice_path,
@@ -639,8 +639,8 @@ class MainWindow(QMainWindow):
         else:
             self.libreoffice_status.setObjectName("statusWarning")
             self.libreoffice_status.setText(
-                "Belum ditemukan. Instal LibreOffice untuk mode pengembangan; paket portable "
-                "Windows menyertakannya otomatis."
+                "Belum ditemukan. Instal LibreOffice untuk mode pengembangan; paket resmi "
+                "menyediakannya tanpa pengaturan manual."
             )
             self.libreoffice_help_button.show()
         self._repolish(self.libreoffice_status)

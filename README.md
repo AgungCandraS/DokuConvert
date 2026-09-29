@@ -2,15 +2,15 @@
 
 DocuConvert adalah aplikasi desktop untuk mengonversi dan mengelola dokumen secara lokal. File yang dipilih diproses di komputer pengguna; aplikasi tidak mengunggah dokumen ke layanan cloud.
 
-## Untuk pengguna Windows
+## Mengunduh dan memasang
 
-Paket portable Windows x64 menyertakan aplikasi dan LibreOffice. Pengguna tidak perlu memasang Python atau LibreOffice secara terpisah.
+Untuk rilis publik, pengguna memilih installer sesuai OS dari GitHub Releases:
 
-1. Salin seluruh folder paket `portable-<timestamp>` yang diberikan. Jika paket dikirim sebagai ZIP, ekstrak ZIP tersebut terlebih dahulu.
-2. Jangan pisahkan folder `DocuConvert` dari folder paketnya.
-3. Jalankan `DocuConvert\DocuConvert.exe`.
+- Windows x64: `DocuConvert-Setup-<versi>-windows-x64.exe`.
+- macOS: `DocuConvert-<versi>-macos-<arsitektur>.pkg` (arsitektur yang sesuai dengan mesin build resmi).
+- Ubuntu/Debian x86_64: `DocuConvert-<versi>-linux-amd64.deb`.
 
-Jangan jalankan executable staging yang berada di folder `build`; gunakan executable di folder distribusi `dist`. Pertahankan `DocuConvert\tools\LibreOffice` agar konversi Word, Excel, dan PowerPoint tetap berfungsi. Build saat ini hanya tersedia untuk Windows x64; macOS dan Linux belum didukung.
+Jalankan installer sesuai OS dan buka DocuConvert dari menu aplikasi. Tidak perlu memasang Python atau menjalankan terminal. Paket Office menyertakan LibreOffice di Windows/macOS; paket Debian/Ubuntu meminta sistem mengelola dependency tersebut saat instalasi. Pemrosesan dokumen dilakukan lokal setelah aplikasi terpasang.
 
 ## Fitur
 
@@ -20,7 +20,7 @@ Jangan jalankan executable staging yang berada di folder `build`; gunakan execut
 - Tambahkan watermark dan proteksi password pada PDF.
 - Riwayat lokal, pembatalan proses, pemilihan folder hasil, dan tema terang/gelap.
 
-Konversi dokumen Office memakai LibreOffice. Paket portable sudah menyertakannya; saat menjalankan dari source, instalasi LibreOffice perlu tersedia di komputer.
+Konversi dokumen Office memakai LibreOffice. Installer Windows/macOS menyertakannya; paket Debian/Ubuntu memasangnya sebagai dependency. Saat menjalankan dari source, LibreOffice perlu tersedia di komputer.
 
 ## Menjalankan dari source
 
@@ -35,24 +35,49 @@ python -m app.main
 
 Untuk konversi Word/Excel/PowerPoint dari source, pasang LibreOffice Desktop atau sediakan distribusi LibreOffice lengkap pada `tools\LibreOffice`.
 
-## Membuat paket portable Windows
+## Membuat installer Windows
 
-Di mesin build Windows x64, siapkan environment proyek dan distribusi LibreOffice lengkap atau MSI resmi:
+Di mesin build Windows x64, siapkan environment proyek, Inno Setup 6, serta distribusi LibreOffice lengkap:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[packaging]"
-.\scripts\build_portable.ps1 -LibreOfficeSource "D:\tools\LibreOffice"
+.\scripts\build_windows_installer.ps1 -LibreOfficeSource "$env:ProgramFiles\LibreOffice"
 ```
 
-Skrip menghasilkan folder baru `dist\portable-<timestamp>\`. Distribusikan seluruh folder tersebut, bukan hanya file `.exe`. Cara memakai sumber LibreOffice MSI, catatan lisensi, dan pemeriksaan rilis dijelaskan di [`docs/portable-build.md`](docs/portable-build.md) dan [`docs/THIRD_PARTY_NOTICES.md`](docs/THIRD_PARTY_NOTICES.md).
+Hasil `.exe` installer dan checksum ada di folder `dist\installer-windows-<timestamp>\`. Skrip lama `build_portable.ps1` tetap tersedia untuk membuat folder portable.
+
+## Membuat paket macOS atau Linux
+
+Build harus dijalankan pada OS target. macOS membutuhkan Python 3.12+, PyInstaller, Xcode Command Line Tools, dan LibreOffice.app:
+
+```bash
+python3 -m pip install -e '.[packaging]'
+brew install --cask libreoffice
+python3 scripts/build_macos_pkg.py --libreoffice-app /Applications/LibreOffice.app
+```
+
+Ubuntu 22.04+ x86_64 membutuhkan paket dependency Qt dan `dpkg-deb`:
+
+```bash
+sudo apt install dpkg-dev libreoffice libgl1 libglib2.0-0 libxcb-cursor0 libxkbcommon-x11-0
+python3 -m pip install -e '.[packaging]'
+python3 scripts/build_linux_deb.py
+```
+
+## Rilis lintas platform
+
+Workflow [Build desktop installers](.github/workflows/installers.yml) membangun installer secara native pada Windows, macOS, dan Ubuntu. Jalankan manual untuk memperoleh artifact pengujian, atau push tag versi seperti `v0.1.0` untuk membuat GitHub Release berisi installer dan checksum.
+
+Build macOS saat ini belum ditandatangani/notarized secara default. Distribusi publik yang mulus memerlukan sertifikat dan proses signing/notarization Apple; build Windows juga belum memakai code-signing certificate.
 
 ## Struktur proyek
 
 - `app/ui/` — antarmuka desktop PySide6, komponen, tema, dan aset.
 - `app/backend/` — domain, validasi, antrean job, dan konverter dokumen.
-- `scripts/` — skrip build portable Windows.
+- `scripts/` — skrip build portable dan installer per OS.
+- `packaging/` — konfigurasi installer Windows.
 - `docs/` — dokumentasi backend dan distribusi.
 - `prd.md` — product requirements document.
 
-Lihat [`docs/backend.md`](docs/backend.md) untuk alur backend dan [`docs/portable-build.md`](docs/portable-build.md) untuk panduan distribusi.
+Lihat [`docs/backend.md`](docs/backend.md) untuk alur backend, [`docs/release-build.md`](docs/release-build.md) untuk pipeline installer lintas platform, dan [`docs/portable-build.md`](docs/portable-build.md) untuk paket portable Windows.

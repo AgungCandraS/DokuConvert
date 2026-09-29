@@ -24,10 +24,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.ui.job_state import JobViewState
-from app.ui.dependencies import is_bundled_libreoffice
-from app.ui.tool_catalog import TOOL_BY_NAME, ToolDefinition
+from app.ui.components.common import default_output_directory
 from app.ui.components.tool_options import ToolOptions
+from app.ui.dependencies import is_bundled_libreoffice
+from app.ui.job_state import JobViewState
+from app.ui.tool_catalog import TOOL_BY_NAME, ToolDefinition
 
 
 def styled_label(text: str, object_name: str) -> QLabel:
@@ -196,7 +197,7 @@ class JobPanel(QWidget):
         output_layout.setSpacing(8)
         output_layout.addWidget(styled_label("Penyimpanan hasil", "sectionHeading"))
         output_row = QHBoxLayout()
-        self.output_path = QLineEdit(output_directory or str(Path.home() / "Documents"))
+        self.output_path = QLineEdit(output_directory or default_output_directory())
         self.output_path.setObjectName("inputField")
         self.output_path.setPlaceholderText("Pilih folder penyimpanan")
         output_row.addWidget(self.output_path, 1)
@@ -300,7 +301,7 @@ class JobPanel(QWidget):
         else:
             message.setObjectName("statusWarning")
             message.setText(
-                "LibreOffice belum ditemukan. Paket portable DocuConvert sudah menyertakannya otomatis."
+                "LibreOffice belum ditemukan. Periksa instalasi aplikasi atau pasang dependency Office yang diperlukan."
             )
             row.addWidget(message, 1)
             help_button = QPushButton("Petunjuk")
@@ -594,7 +595,7 @@ class JobPanel(QWidget):
     def _validate_output_target(self) -> bool:
         output_directory = Path(self.output_path.text().strip())
         name = self.output_name.text().strip()
-        if self._uses_output_name() and re.search(r'[<>:"/\\|?*]', name):
+        if os.name == "nt" and self._uses_output_name() and re.search(r'[<>:"/\\|?*]', name):
             self._show_validation_error(
                 "Nama hasil mengandung karakter yang tidak dapat digunakan di Windows.",
                 self.output_name,

@@ -1,0 +1,176 @@
+name: Build desktop installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install LibreOffice and Inno Setup
+        shell: pwsh
+        run: choco install libreoffice-fresh innosetup --yes --no-progress
+      - name: Install Python dependencies
+        run: python -m pip install -e ".[packaging]"
+      - name: Build Windows installer
+        shell: pwsh
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
+          RELEASE_TYPE: ${{ github.ref_type }}
+        run: |
+          $version = if ($env:RELEASE_TYPE -eq "tag" -and $env:RELEASE_REF.StartsWith("v")) {
+            $env:RELEASE_REF.Substring(1)
+          } else {
+            (Select-String -Path pyproject.toml -Pattern '^version = "([^"]+)"').Matches[0].Groups[1].Value
+          }
+          $libreOffice = Join-Path $env:ProgramFiles "LibreOffice"
+          if (-not (Test-Path -LiteralPath (Join-Path $libreOffice "program\soffice.exe"))) {
+            throw "LibreOffice dari paket build tidak ditemukan di $libreOffice"
+          }
+          .\scripts\build_windows_installer.ps1 -LibreOfficeSource $libreOffice -Version $version
+          $release = Get-ChildItem dist -Directory -Filter "installer-windows-*" |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $installer = Get-ChildItem -LiteralPath $release.FullName -Filter "DocuConvert-Setup-*.exe" -File |
+            Select-Object -First 1
+          $testDirectory = Join-Path $env:RUNNER_TEMP "docuconvert-installer-smoke"
+          & $installer.FullName /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$testDirectory"
+          if ($LASTEXITCODE -ne 0) { throw "Silent install gagal (exit code $LASTEXITCODE)." }
+          python scripts/smoke_frozen_app.py (Join-Path $testDirectory "DocuConvert.exe") `
+            --working-directory $testDirectory
+          if ($LASTEXITCODE -ne 0) { throw "Frozen app Windows gagal dibuka." }
+          $uninstaller = Join-Path $testDirectory "unins000.exe"
+          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+          if ($LASTEXITCODE -ne 0) { throw "Uninstall Windows gagal (exit code $LASTEXITCODE)." }
+          if (Test-Path -LiteralPath (Join-Path $testDirectory "DocuConvert.exe")) {
+            throw "Executable masih tertinggal setelah uninstall Windows."
+          }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DocuConvert-Windows-x64
+          path: dist/installer-windows-*/*
+          if-no-files-found: error
+          compression-level: 0
+
+  macos:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x86_64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install LibreOffice
+        run: brew install --cask libreoffice
+      - name: Install Python dependencies
+        run: python -m pip install -e ".[packaging]"
+      - name: Build macOS package
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
+          RELEASE_TYPE: ${{ github.ref_type }}
+          EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          if [[ "$(uname -m)" != "$EXPECTED_ARCHITECTURE" ]]; then
+            echo "Runner architecture does not match the requested build." >&2
+            exit 1
+          fi
+          if [[ "$RELEASE_TYPE" == "tag" && "$RELEASE_REF" == v* ]]; then
+            version="${RELEASE_REF#v}"
+          else
+            version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          fi
+          python scripts/build_macos_pkg.py \
+            --libreoffice-app /Applications/LibreOffice.app \
+            --version "$version"
+      - name: Smoke test packaged macOS app
+        run: |
+          package=(dist/release-macos-*/*.pkg)
+          sudo installer -pkg "${package[0]}" -target /
+          executable="/Applications/DocuConvert.app/Contents/MacOS/DocuConvert"
+          bundled_soffice="/Applications/DocuConvert.app/Contents/Resources/tools/libreoffice/LibreOffice.app/Contents/MacOS/soffice"
+          test -x "$bundled_soffice"
+          python scripts/smoke_frozen_app.py "$executable"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DocuConvert-macOS-${{ matrix.architecture }}
+          path: dist/release-macos-*/*
+          if-no-files-found: error
+          compression-level: 0
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install native runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes dpkg-dev libreoffice \
+            libgl1 libglib2.0-0 libx11-6 libx11-xcb1 libxcb1 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-shm0 libxcb-sync1 \
+            libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 \
+            libxkbcommon0 libxkbcommon-x11-0
+      - name: Install Python dependencies
+        run: python -m pip install -e ".[packaging]"
+      - name: Build Debian package
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
+          RELEASE_TYPE: ${{ github.ref_type }}
+        run: |
+          if [[ "$RELEASE_TYPE" == "tag" && "$RELEASE_REF" == v* ]]; then
+            version="${RELEASE_REF#v}"
+          else
+            version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          fi
+          python scripts/build_linux_deb.py --version "$version"
+      - name: Smoke test packaged Debian app
+        run: |
+          package=$(find dist/release-linux-amd64-* -maxdepth 1 -name '*.deb' -print -quit)
+          sudo apt-get install --yes "./$package"
+          python scripts/smoke_frozen_app.py \
+            /opt/docuconvert/DocuConvert/DocuConvert \
+            --working-directory /opt/docuconvert/DocuConvert
+          sudo apt-get remove --yes docuconvert
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DocuConvert-Linux-amd64-deb
+          path: dist/release-linux-amd64-*/*
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: release-artifacts
+      - name: Publish installer assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-artifacts/*/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "DocuConvert $GITHUB_REF_NAME" \
+            --generate-notes

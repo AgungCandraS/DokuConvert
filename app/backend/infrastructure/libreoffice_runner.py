@@ -43,6 +43,14 @@ def find_libreoffice(preferred_path: str | os.PathLike[str] | None = None) -> st
             candidate = Path(root) / "LibreOffice" / "program" / "soffice.exe"
             if candidate.is_file():
                 return str(candidate)
+    elif sys.platform == "darwin":
+        for candidate in (
+            Path("/Library/Application Support/DocuConvert/LibreOffice.app/Contents/MacOS/soffice"),
+            Path("/Applications/LibreOffice.app/Contents/MacOS/soffice"),
+            Path.home() / "Applications/LibreOffice.app/Contents/MacOS/soffice",
+        ):
+            if candidate.is_file():
+                return str(candidate.resolve())
     return None
 
 
@@ -76,6 +84,18 @@ def _bundled_libreoffice_candidates() -> list[Path]:
         roots.insert(0, Path(extraction_root))
 
     candidates: list[Path] = []
+    if sys.platform == "darwin" and getattr(sys, "frozen", False):
+        app_contents = Path(sys.executable).resolve().parent.parent
+        candidates.append(
+            app_contents
+            / "Resources"
+            / "tools"
+            / "libreoffice"
+            / "LibreOffice.app"
+            / "Contents"
+            / "MacOS"
+            / "soffice"
+        )
     if os.name == "nt":
         executable_names = ("soffice.exe", "soffice.com")
         relative_paths = (
@@ -93,6 +113,14 @@ def _bundled_libreoffice_candidates() -> list[Path]:
         for relative_path in relative_paths:
             for executable_name in executable_names:
                 candidates.append(root / relative_path / executable_name)
+    if sys.platform == "darwin":
+        candidates.extend(
+            (
+                Path("/Library/Application Support/DocuConvert/LibreOffice.app/Contents/MacOS/soffice"),
+                Path("/Applications/LibreOffice.app/Contents/MacOS/soffice"),
+                Path.home() / "Applications/LibreOffice.app/Contents/MacOS/soffice",
+            )
+        )
     return candidates
 
 

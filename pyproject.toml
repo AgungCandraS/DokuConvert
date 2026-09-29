@@ -1,7 +1,13 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "docuconvert-desktop"
 version = "0.1.0"
 description = "A local-first desktop document converter"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.12"
 dependencies = [
     "PySide6>=6.7",
@@ -20,6 +26,10 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+namespaces = false
 
 [tool.setuptools.package-data]
 "app.ui" = ["resources/icons/*"]

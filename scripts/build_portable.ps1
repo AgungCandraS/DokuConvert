@@ -114,7 +114,8 @@ if (-not $bundledSoffice) {
 }
 
 $notices = Join-Path $bundleRoot "THIRD_PARTY_NOTICES.md"
-Copy-Item -LiteralPath (Join-Path $projectRoot "docs\THIRD_PARTY_NOTICES.md") -Destination $notices
+Copy-Item -LiteralPath (Join-Path $projectRoot "THIRD_PARTY_NOTICES.md") -Destination $notices
+Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination (Join-Path $bundleRoot "LICENSE")
 @"
 DocuConvert Portable
 

@@ -70,9 +70,10 @@ def main() -> int:
         bundled_libreoffice.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(libreoffice_app, bundled_libreoffice, symlinks=True)
         shutil.copy2(
-            project_root / "docs" / "THIRD_PARTY_NOTICES.md",
+            project_root / "THIRD_PARTY_NOTICES.md",
             resources / "THIRD_PARTY_NOTICES.md",
         )
+        shutil.copy2(project_root / "LICENSE", resources / "LICENSE")
 
         package_root = temp_root / "package-root"
         install_app = package_root / "Applications" / "DocuConvert.app"

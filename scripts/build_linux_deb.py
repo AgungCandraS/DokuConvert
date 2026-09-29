@@ -117,9 +117,10 @@ def main() -> int:
         documentation = package_root / "usr" / "share" / "doc" / "docuconvert"
         documentation.mkdir(parents=True)
         shutil.copy2(
-            project_root / "docs" / "THIRD_PARTY_NOTICES.md",
+            project_root / "THIRD_PARTY_NOTICES.md",
             documentation / "THIRD_PARTY_NOTICES.md",
         )
+        shutil.copy2(project_root / "LICENSE", documentation / "LICENSE")
         (documentation / "README").write_text(
             "DocuConvert untuk Debian/Ubuntu x86_64. LibreOffice dipasang sebagai "
             "dependency paket agar konversi Office tersedia.\n",

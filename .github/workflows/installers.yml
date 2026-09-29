@@ -45,10 +45,24 @@ jobs:
           # Test the same per-user default location the installer presents to users.
           $testDirectory = Join-Path $env:LOCALAPPDATA "Programs\DocuConvert"
           $installLog = Join-Path $env:RUNNER_TEMP "docuconvert-installer-smoke.log"
-          & $installer.FullName /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/LOG=$installLog"
-          if ($LASTEXITCODE -ne 0) { throw "Silent install gagal (exit code $LASTEXITCODE)." }
+          $setupArguments = @(
+            "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+            "/DIR=`"$testDirectory`"", "/LOG=`"$installLog`""
+          )
+          $setupProcess = Start-Process -FilePath $installer.FullName `
+            -ArgumentList $setupArguments -Wait -PassThru
+          if ($setupProcess.ExitCode -ne 0) {
+            throw "Silent install gagal (exit code $($setupProcess.ExitCode))."
+          }
           if (-not (Test-Path -LiteralPath (Join-Path $testDirectory "DocuConvert.exe"))) {
-            Get-Content -LiteralPath $installLog -Tail 80
+            if (Test-Path -LiteralPath $installLog) {
+              Get-Content -LiteralPath $installLog -Tail 80
+            } else {
+              Write-Host "Inno Setup tidak membuat log pada $installLog"
+            }
+            Write-Host "Direktori instalasi yang diharapkan: $testDirectory"
+            Get-ChildItem -LiteralPath (Split-Path $testDirectory -Parent) -Force -ErrorAction SilentlyContinue |
+              Select-Object FullName, Mode
             throw "Installer selesai tanpa memasang DocuConvert.exe ke lokasi default $testDirectory."
           }
           python scripts/smoke_frozen_app.py (Join-Path $testDirectory "DocuConvert.exe") `

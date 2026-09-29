@@ -4,7 +4,7 @@ DocuConvert adalah aplikasi desktop untuk mengonversi dan mengelola dokumen. Set
 
 ## Pasang dan mulai gunakan
 
-1. Buka [GitHub Releases](https://github.com/AgungCandraS/DokuConvert/releases) dan unduh installer untuk sistem operasi Anda.
+1. Klik tautan **Unduh installer** pada tabel di bawah. File installer akan diunduh ke komputer Anda.
 2. Jalankan installer dan ikuti petunjuk di layar.
 3. Buka DocuConvert dari Start Menu, Applications/Launchpad, atau menu aplikasi Linux.
 4. Pilih alat, klik **Tambah file**, atur opsi dan folder penyimpanan, lalu klik **Mulai proses**.
@@ -12,11 +12,12 @@ DocuConvert adalah aplikasi desktop untuk mengonversi dan mengelola dokumen. Set
 
 Pilih paket yang sesuai:
 
-| Sistem operasi | Paket | Catatan |
+| Sistem operasi | Installer | Catatan |
 | --- | --- | --- |
-| Windows x64 | `DocuConvert-Setup-<versi>-windows-x64.exe` | LibreOffice disertakan untuk konversi Office. |
-| macOS Intel / Apple Silicon | `DocuConvert-<versi>-macos-<arsitektur>.pkg` | Pilih paket sesuai arsitektur Mac. LibreOffice disertakan. |
-| Ubuntu 22.04+ / Debian 12+, x86_64 | `DocuConvert-<versi>-linux-amd64.deb` | LibreOffice dipasang otomatis sebagai dependency paket. |
+| Windows x64 | [Unduh installer](https://github.com/AgungCandraS/DokuConvert/releases/latest/download/DocuConvert-Windows-x64.exe) | LibreOffice disertakan untuk konversi Office. |
+| macOS Apple Silicon (arm64) | [Unduh installer](https://github.com/AgungCandraS/DokuConvert/releases/latest/download/DocuConvert-macOS-Apple-Silicon.pkg) | LibreOffice disertakan. |
+| macOS Intel (x86_64) | [Unduh installer](https://github.com/AgungCandraS/DokuConvert/releases/latest/download/DocuConvert-macOS-Intel.pkg) | LibreOffice disertakan. |
+| Ubuntu 22.04+ / Debian 12+, x86_64 | [Unduh paket](https://github.com/AgungCandraS/DokuConvert/releases/latest/download/DocuConvert-Linux-amd64.deb) | LibreOffice dipasang otomatis sebagai dependency paket. |
 
 ### Langkah instalasi
 
@@ -26,7 +27,7 @@ Pilih paket yang sesuai:
 
 Sesudah aplikasi terbuka, pilih alat konversi atau PDF, tambahkan file, atur pilihan yang tersedia, pilih lokasi hasil bila perlu, lalu tekan **Mulai proses**. File hasil dapat dibuka langsung dari layar selesai atau dari riwayat.
 
-Jika halaman Releases belum berisi installer, berarti rilis paket belum dipublikasikan. Setiap push dan pull request menjalankan build CI dan menyimpan artifact uji; maintainer menerbitkan installer untuk pengguna melalui GitHub Release bertag versi. Build publik saat ini belum ditandatangani/notarized, sehingga Windows atau macOS mungkin menampilkan peringatan keamanan.
+Tautan unduh mengarah ke installer pada GitHub Release terbaru. Setelah file terunduh, buka installer untuk memasang aplikasi; tautan tidak memasang aplikasi secara otomatis dari browser. Setiap push dan pull request juga menghasilkan artifact uji sementara di Actions. Build publik saat ini belum ditandatangani/notarized, sehingga Windows atau macOS mungkin menampilkan peringatan keamanan.
 
 Pengguna tidak perlu memasang Python, LibreOffice secara terpisah, menjalankan Docker, membuka terminal, atau membangun aplikasi dari source. Di Windows/macOS, installer membawa LibreOffice; paket Ubuntu/Debian memasangnya sebagai dependency.
 

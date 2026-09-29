@@ -210,11 +210,24 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: release-artifacts
+      - name: Prepare stable installer downloads
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          windows_installer=$(find release-artifacts/DocuConvert-Windows-x64 -maxdepth 1 -name 'DocuConvert-Setup-*.exe' -print -quit)
+          macos_arm_installer=$(find release-artifacts/DocuConvert-macOS-arm64 -maxdepth 1 -name '*.pkg' -print -quit)
+          macos_intel_installer=$(find release-artifacts/DocuConvert-macOS-x86_64 -maxdepth 1 -name '*.pkg' -print -quit)
+          linux_installer=$(find release-artifacts/DocuConvert-Linux-amd64-deb -maxdepth 1 -name '*.deb' -print -quit)
+          cp "$windows_installer" release-assets/DocuConvert-Windows-x64.exe
+          cp "$macos_arm_installer" release-assets/DocuConvert-macOS-Apple-Silicon.pkg
+          cp "$macos_intel_installer" release-assets/DocuConvert-macOS-Intel.pkg
+          cp "$linux_installer" release-assets/DocuConvert-Linux-amd64.deb
+          (cd release-assets && sha256sum DocuConvert-* > SHA256SUMS.txt)
       - name: Publish installer assets to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release-artifacts/*/* \
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "DocuConvert $GITHUB_REF_NAME" \
             --generate-notes

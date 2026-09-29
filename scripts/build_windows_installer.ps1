@@ -55,6 +55,7 @@ $compilerArguments = @(
     "/DAppVersion=$Version",
     "/DPayloadDir=$payloadDirectory",
     "/DOutputDir=$OutputDirectory",
+    "/DProjectRoot=$projectRoot",
     $installerScript
 )
 Push-Location $projectRoot

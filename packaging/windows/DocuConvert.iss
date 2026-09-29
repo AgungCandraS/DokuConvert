@@ -7,6 +7,9 @@
 #ifndef OutputDir
   #error OutputDir must point to a new release output folder
 #endif
+#ifndef ProjectRoot
+  #error ProjectRoot must point to the repository root
+#endif
 
 [Setup]
 AppId={{D7A4EAA5-9F4D-4937-AD06-57E91F0C942C}
@@ -19,7 +22,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 UninstallDisplayIcon={app}\DocuConvert.exe
-SetupIconFile=app\ui\resources\icons\app-icon.ico
+SetupIconFile="{#ProjectRoot}\app\ui\resources\icons\app-icon.ico"
 OutputDir="{#OutputDir}"
 OutputBaseFilename=DocuConvert-Setup-{#AppVersion}-windows-x64
 WizardStyle=modern

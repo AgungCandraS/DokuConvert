@@ -45,7 +45,7 @@ class OfficeToPdfConverter(ConverterAdapter):
                 output_stem = safe_stem(source.stem)
                 if stem_counts[output_stem.casefold()] > 1:
                     output_stem = f"{output_stem}_{index}"
-                output = workspace / f"{output_stem}_converted.pdf"
+                output = workspace / f"{output_stem}.pdf"
                 raw_output.replace(output)
                 outputs.append(output)
             except JobCancelled:

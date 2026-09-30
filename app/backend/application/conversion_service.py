@@ -107,13 +107,16 @@ class ConversionService:
 
         filenames: list[str] | None = None
         if job.operation == OperationType.PDF_TO_IMAGE:
-            prefix = safe_stem(Path(requested).stem if Path(requested).suffix else requested)
+            prefix = safe_stem(
+                Path(requested).stem if Path(requested).suffix.lower() in {".png", ".jpg", ".jpeg"}
+                else requested
+            )
             filenames = [
                 f"{prefix}-{index:03d}{output.suffix.lower()}"
                 for index, output in enumerate(outputs, start=1)
             ]
         elif job.operation == OperationType.SPLIT_PDF and job.options.get("mode") == "ranges":
-            prefix = safe_stem(Path(requested).stem if Path(requested).suffix else requested)
+            prefix = safe_stem(requested[:-4] if requested.lower().endswith(".pdf") else requested)
             ranges = [
                 part.strip().replace("-", "_")
                 for part in str(job.options.get("page_ranges", "")).split(",")
@@ -133,11 +136,24 @@ class ConversionService:
         elif len(outputs) == 1:
             output = outputs[0]
             requested_path = Path(requested)
-            stem = safe_stem(requested_path.stem if requested_path.suffix else requested_path.name)
+            stem = safe_stem(
+                requested_path.stem
+                if requested_path.suffix.lower() == output.suffix.lower()
+                else requested_path.name
+            )
             suffix = output.suffix.lower()
             if requested_path.suffix.lower() == suffix:
                 suffix = requested_path.suffix.lower()
             filenames = [f"{stem}{suffix}"]
+        else:
+            suffix = outputs[0].suffix.lower()
+            prefix = safe_stem(
+                requested[:-len(suffix)] if requested.lower().endswith(suffix) else requested
+            )
+            filenames = [
+                f"{prefix}-{index:03d}{output.suffix.lower()}"
+                for index, output in enumerate(outputs, start=1)
+            ]
         if filenames is None:
             return outputs
 

@@ -21,7 +21,9 @@ jobs:
         shell: pwsh
         run: choco install libreoffice-fresh innosetup --yes --no-progress
       - name: Install Python dependencies
-        run: python -m pip install -e ".[packaging]"
+        run: python -m pip install -e ".[dev,packaging]"
+      - name: Run conversion and update regressions
+        run: python -m pytest -q
       - name: Build Windows installer
         shell: pwsh
         env:
@@ -68,6 +70,9 @@ jobs:
           python scripts/smoke_frozen_app.py (Join-Path $testDirectory "DocuConvert.exe") `
             --working-directory $testDirectory
           if ($LASTEXITCODE -ne 0) { throw "Frozen app Windows gagal dibuka." }
+          python scripts/verify_conversions.py `
+            (Join-Path $testDirectory "tools\LibreOffice\program\soffice.exe")
+          if ($LASTEXITCODE -ne 0) { throw "Konversi Office hasil instalasi Windows gagal." }
           $uninstaller = Join-Path $testDirectory "unins000.exe"
           $uninstallLog = Join-Path $env:RUNNER_TEMP "docuconvert-uninstall-smoke.log"
           $uninstallArguments = @(
@@ -114,7 +119,9 @@ jobs:
       - name: Install LibreOffice
         run: brew install --cask libreoffice
       - name: Install Python dependencies
-        run: python -m pip install -e ".[packaging]"
+        run: python -m pip install -e ".[dev,packaging]"
+      - name: Run conversion and update regressions
+        run: python -m pytest -q
       - name: Build macOS package
         env:
           RELEASE_REF: ${{ github.ref_name }}
@@ -165,7 +172,9 @@ jobs:
             libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 \
             libxkbcommon0 libxkbcommon-x11-0
       - name: Install Python dependencies
-        run: python -m pip install -e ".[packaging]"
+        run: python -m pip install -e ".[dev,packaging]"
+      - name: Run conversion and update regressions
+        run: python -m pytest -q
       - name: Build Debian package
         env:
           RELEASE_REF: ${{ github.ref_name }}

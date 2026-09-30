@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
 
 from app.ui.components.common import default_output_directory
 from app.ui.components.tool_options import ToolOptions
-from app.ui.dependencies import is_bundled_libreoffice
 from app.ui.job_state import JobViewState
 from app.ui.tool_catalog import TOOL_BY_NAME, ToolDefinition
 
@@ -292,16 +291,12 @@ class JobPanel(QWidget):
         message.setWordWrap(True)
         if self.libreoffice_path:
             message.setObjectName("statusSuccess")
-            message.setText(
-                "LibreOffice bawaan DocuConvert siap digunakan."
-                if is_bundled_libreoffice(self.libreoffice_path)
-                else "LibreOffice terdeteksi dan siap digunakan di perangkat ini."
-            )
+            message.setText("DocuConvert siap mengonversi dokumen Office.")
             row.addWidget(message, 1)
         else:
             message.setObjectName("statusWarning")
             message.setText(
-                "LibreOffice belum ditemukan. Periksa instalasi aplikasi atau pasang dependency Office yang diperlukan."
+                "Komponen konversi DocuConvert belum tersedia. Periksa instalasi aplikasi."
             )
             row.addWidget(message, 1)
             help_button = QPushButton("Petunjuk")
@@ -319,7 +314,7 @@ class JobPanel(QWidget):
         return "Periksa pengaturan, lalu mulai proses."
 
     def _uses_output_name(self) -> bool:
-        return self.tool.key not in {"word_to_pdf", "excel_to_pdf", "powerpoint_to_pdf"}
+        return True
 
     def _output_name_label(self) -> str:
         if self.tool.key == "split_pdf" and self.split_mode.currentData() == "ranges":
@@ -329,19 +324,22 @@ class JobPanel(QWidget):
     def _update_split_output_mode(self) -> None:
         self.output_name_label.setText(self._output_name_label())
         if not self._has_custom_name:
-            self.output_name.setText(
-                "halaman" if self.split_mode.currentData() == "ranges" else "halaman_terpilih.pdf"
-            )
+            self.output_name.setText(self._suggest_output_name())
         self.output_hint.setText(self._output_hint())
 
     def _output_hint(self) -> str:
         if self.tool.key in {"word_to_pdf", "excel_to_pdf", "powerpoint_to_pdf"}:
-            return "Setiap file sumber menghasilkan PDF dengan nama masing-masing."
+            return (
+                "Kosongkan untuk memakai nama tiap file sumber. Nama khusus diberi nomor untuk banyak file."
+            )
         if self.tool.key == "pdf_to_image":
             return "Setiap halaman menjadi gambar terpisah dengan nomor halaman pada namanya."
         if self.tool.key == "split_pdf" and self.split_mode.currentData() == "ranges":
             return "Setiap rentang menghasilkan PDF terpisah dengan nomor halaman pada namanya."
-        return "Pilih nama yang belum digunakan di folder output."
+        return (
+            "Nama mengikuti file sumber dan dapat diubah. "
+            "Jika sudah ada, nomor ditambahkan otomatis."
+        )
 
     def _default_output_name(self) -> str:
         suffixes = {
@@ -399,16 +397,16 @@ class JobPanel(QWidget):
         if not self.files:
             return self._default_output_name()
         stem = Path(self.files[0]).stem
-        if self.tool.key == "split_pdf":
-            return stem if self.split_mode.currentData() == "ranges" else f"{stem}_halaman_terpilih.pdf"
-        suffix = {
-            "merge_pdf": "_merged.pdf",
-            "compress_pdf": "_compressed.pdf", "image_to_pdf": ".pdf",
-            "pdf_to_image": "_page", "pdf_to_word": ".docx",
-            "rotate_pdf": "_rotated.pdf", "delete_pages": "_edited.pdf",
-            "watermark_pdf": "_watermark.pdf", "protect_pdf": "_protected.pdf",
-        }.get(self.tool.key, "_converted.pdf")
-        return f"{stem}{suffix}"
+        if (
+            self.tool.key in {"word_to_pdf", "excel_to_pdf", "powerpoint_to_pdf"}
+            and len(self.files) > 1
+        ):
+            return ""
+        if self.tool.key == "pdf_to_image" or (
+            self.tool.key == "split_pdf" and self.split_mode.currentData() == "ranges"
+        ):
+            return stem
+        return f"{stem}{'.docx' if self.tool.key == 'pdf_to_word' else '.pdf'}"
 
     def _refresh_file_list(self) -> None:
         self.file_list.blockSignals(True)
@@ -444,6 +442,8 @@ class JobPanel(QWidget):
             self.file_list.item(index).data(Qt.ItemDataRole.UserRole)
             for index in range(self.file_list.count())
         ]
+        if not self._has_custom_name:
+            self.output_name.setText(self._suggest_output_name())
         self._refresh_file_list()
 
     def _update_order_controls(self) -> None:
@@ -577,7 +577,9 @@ class JobPanel(QWidget):
                 self.output_path,
             )
             return
-        if self._uses_output_name() and not self.output_name.text().strip():
+        if not self.output_name.text().strip() and self.tool.key not in {
+            "word_to_pdf", "excel_to_pdf", "powerpoint_to_pdf"
+        }:
             self._show_validation_error(
                 "Nama hasil diperlukan. Isi nama file atau awalan nama gambar.", self.output_name
             )
@@ -602,28 +604,15 @@ class JobPanel(QWidget):
             )
             return False
         targets = self._output_targets(output_directory, name)
-        conflicts = [target.name for target in targets if target.exists()]
-        if conflicts:
-            if self.state == JobViewState.COMPLETED and self._uses_output_name():
-                original_name = name
-                for index in range(2, 1000):
-                    candidate = self._numbered_output_name(original_name, index)
-                    if not any(
-                        target.exists()
-                        for target in self._output_targets(output_directory, candidate)
-                    ):
-                        self.output_name.setText(candidate)
-                        return True
-            conflict_text = ", ".join(conflicts[:3])
+        if any(target.parent != output_directory for target in targets):
             self._show_validation_error(
-                f"File hasil {conflict_text} sudah ada. Pilih nama atau folder lain agar file lama tetap aman.",
-                self.output_name if self._uses_output_name() else self.output_path,
+                "Isi nama file saja, tanpa lokasi folder.", self.output_name,
             )
             return False
         return True
 
     def _output_targets(self, output_directory: Path, name: str) -> list[Path]:
-        if self.tool.key in {"word_to_pdf", "excel_to_pdf", "powerpoint_to_pdf"}:
+        if self.tool.key in {"word_to_pdf", "excel_to_pdf", "powerpoint_to_pdf"} and not name:
             return [output_directory / f"{Path(source).stem}.pdf" for source in self.files]
         if self.tool.key == "pdf_to_image":
             extension = str(self.image_format.currentData())
@@ -716,7 +705,11 @@ class JobPanel(QWidget):
         self._set_configuration_enabled(True)
         self.status_panel.show()
         self._set_status_style("statusWarning" if warnings else "statusSuccess")
-        details = "Proses selesai. File hasil sudah tersedia."
+        details = (
+            "DocuConvert selesai mengompres PDF. File hasil sudah tersedia."
+            if self.tool.key == "compress_pdf"
+            else "DocuConvert selesai memproses dokumen. File hasil sudah tersedia."
+        )
         if warnings:
             details += " " + " ".join(warnings)
         self.status_label.setText(details)

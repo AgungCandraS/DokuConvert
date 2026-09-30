@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import platform
 import shutil
 import subprocess
@@ -11,7 +12,6 @@ import sys
 import tempfile
 import tomllib
 from pathlib import Path
-
 
 RUNTIME_DEPENDENCIES = (
     "libc6 (>= 2.35), libgcc-s1, libstdc++6, libgl1, libegl1, libglib2.0-0, "
@@ -68,6 +68,7 @@ def main() -> int:
                 str(project_root / "DocuConvert.spec"),
             ],
             cwd=project_root,
+            env={**os.environ, "DOCUCONVERT_BUILD_VERSION": version},
             check=True,
         )
 

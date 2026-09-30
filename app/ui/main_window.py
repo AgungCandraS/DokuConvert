@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, QSize, Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtGui import QColor, QDesktopServices, QIcon, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -28,15 +28,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.backend.domain.enums import JobStatus
+from app.backend.infrastructure.update_service import UpdateRelease
 from app.ui.components.common import card_frame, default_output_directory, icon_path
 from app.ui.components.drop_zone import DropZone
 from app.ui.components.tool_card import ToolCard
 from app.ui.controllers.job_controller import JobController
-from app.ui.dependencies import find_libreoffice, is_bundled_libreoffice
+from app.ui.controllers.update_controller import UpdateController, launch_update
+from app.ui.dependencies import find_libreoffice
 from app.ui.history_page import HistoryPage
 from app.ui.job_panel import JobPanel
 from app.ui.themes import DARK_STYLESHEET, LIGHT_STYLESHEET
 from app.ui.tool_catalog import FEATURED_TOOL_KEYS, TOOL_BY_KEY, TOOLS
+from app.version import VERSION
 
 
 def styled_label(text: str, object_name: str) -> QLabel:
@@ -72,6 +76,15 @@ class MainWindow(QMainWindow):
             self.job_controller.submission_failed.connect(self._handle_submission_failure)
             self._refresh_history()
         self._apply_theme()
+        self.available_update: UpdateRelease | None = None
+        self.update_package: Path | None = None
+        self._notified_version = ""
+        self.updates = UpdateController(self)
+        self.updates.checked.connect(self._update_checked)
+        self.updates.downloaded.connect(self._update_downloaded)
+        self.updates.failed.connect(self._update_failed)
+        self.updates.progress.connect(self._update_progress)
+        self.updates.busy_changed.connect(self._update_busy)
 
     def _migrate_legacy_history(self) -> None:
         if self.job_controller is None:
@@ -123,7 +136,10 @@ class MainWindow(QMainWindow):
         privacy_copy.setWordWrap(True)
         privacy_layout.addWidget(privacy_copy)
         side.addWidget(privacy)
-        side.addWidget(styled_label("Versi 0.1.0", "tinyMuted"), alignment=Qt.AlignmentFlag.AlignHCenter)
+        side.addWidget(
+            styled_label(f"Versi {VERSION}", "tinyMuted"),
+            alignment=Qt.AlignmentFlag.AlignHCenter,
+        )
         shell.addWidget(sidebar)
 
         content = QWidget()
@@ -337,7 +353,7 @@ class MainWindow(QMainWindow):
             )
         )
         dependency_row = QHBoxLayout()
-        self.libreoffice_status = styled_label("Memeriksa LibreOffice…", "statusText")
+        self.libreoffice_status = styled_label("Memeriksa komponen DocuConvert…", "statusText")
         self.libreoffice_status.setWordWrap(True)
         dependency_row.addWidget(self.libreoffice_status, 1)
         refresh_dependency = QPushButton("Periksa lagi")
@@ -345,9 +361,9 @@ class MainWindow(QMainWindow):
         refresh_dependency.clicked.connect(self._refresh_dependency_status)
         dependency_row.addWidget(refresh_dependency)
         dependency_layout.addLayout(dependency_row)
-        dependency_help = QPushButton("Panduan LibreOffice")
+        dependency_help = QPushButton("Panduan DocuConvert")
         dependency_help.setObjectName("textButton")
-        dependency_help.setAccessibleName("Buka panduan instalasi LibreOffice")
+        dependency_help.setAccessibleName("Buka panduan DocuConvert")
         dependency_help.clicked.connect(self._open_libreoffice_help)
         self.libreoffice_help_button = dependency_help
         dependency_layout.addWidget(dependency_help, alignment=Qt.AlignmentFlag.AlignLeft)
@@ -369,7 +385,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(11)
         layout.addWidget(styled_label("Tentang DocuConvert", "pageTitle"))
-        layout.addWidget(styled_label("Versi 0.1.0", "mutedText"))
+        layout.addWidget(styled_label(f"Versi {VERSION}", "mutedText"))
         surface = card_frame(object_name="privacyCard")
         inner = QVBoxLayout(surface)
         inner.setContentsMargins(19, 18, 19, 18)
@@ -383,6 +399,28 @@ class MainWindow(QMainWindow):
         copy.setWordWrap(True)
         inner.addWidget(copy)
         layout.addWidget(surface)
+        updates = card_frame(object_name="surface")
+        update_layout = QVBoxLayout(updates)
+        update_layout.setContentsMargins(19, 18, 19, 18)
+        update_layout.addWidget(styled_label("Update aplikasi", "sectionHeading"))
+        self.update_status = styled_label(
+            "Update diperiksa otomatis saat aplikasi terhubung ke internet.", "mutedText"
+        )
+        self.update_status.setWordWrap(True)
+        update_layout.addWidget(self.update_status)
+        actions = QHBoxLayout()
+        self.check_update_button = QPushButton("Cek update")
+        self.check_update_button.setObjectName("secondaryButton")
+        self.check_update_button.clicked.connect(lambda: self.updates.check(manual=True))
+        actions.addWidget(self.check_update_button)
+        self.install_update_button = QPushButton("Unduh update")
+        self.install_update_button.setObjectName("primaryButton")
+        self.install_update_button.clicked.connect(self._install_update)
+        self.install_update_button.hide()
+        actions.addWidget(self.install_update_button)
+        actions.addStretch(1)
+        update_layout.addLayout(actions)
+        layout.addWidget(updates)
         layout.addStretch(1)
         return page
 
@@ -490,8 +528,8 @@ class MainWindow(QMainWindow):
         if self.job_page.tool.key in {"word_to_pdf", "excel_to_pdf", "powerpoint_to_pdf"}:
             if not self.libreoffice_path:
                 self.job_page.set_unavailable(
-                    "LibreOffice tidak ditemukan. Instal LibreOffice untuk mode pengembangan atau "
-                    "gunakan paket portable DocuConvert. File Anda belum diproses."
+                    "Komponen konversi DocuConvert belum tersedia. Periksa instalasi "
+                    "atau gunakan paket lengkap DocuConvert. File Anda belum diproses."
                 )
                 return
         if self.job_controller is not None:
@@ -631,16 +669,13 @@ class MainWindow(QMainWindow):
             return
         if self.libreoffice_path:
             self.libreoffice_status.setObjectName("statusSuccess")
-            if is_bundled_libreoffice(self.libreoffice_path):
-                self.libreoffice_status.setText("LibreOffice bawaan DocuConvert siap digunakan.")
-            else:
-                self.libreoffice_status.setText("LibreOffice terdeteksi dan siap digunakan di perangkat ini.")
+            self.libreoffice_status.setText("DocuConvert siap mengonversi dokumen Office.")
             self.libreoffice_help_button.hide()
         else:
             self.libreoffice_status.setObjectName("statusWarning")
             self.libreoffice_status.setText(
-                "Belum ditemukan. Instal LibreOffice untuk mode pengembangan; paket resmi "
-                "menyediakannya tanpa pengaturan manual."
+                "Komponen konversi DocuConvert belum tersedia. "
+                "Periksa instalasi atau gunakan paket lengkap DocuConvert."
             )
             self.libreoffice_help_button.show()
         self._repolish(self.libreoffice_status)
@@ -652,7 +687,7 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _open_libreoffice_help() -> None:
-        QDesktopServices.openUrl(QUrl("https://www.libreoffice.org/download/download-libreoffice/"))
+        QDesktopServices.openUrl(QUrl("https://github.com/AgungCandraS/DokuConvert#pasang-dan-mulai-gunakan"))
 
     def _choose_default_output(self) -> None:
         path = QFileDialog.getExistingDirectory(
@@ -689,4 +724,94 @@ class MainWindow(QMainWindow):
     def _apply_theme(self) -> None:
         app = QApplication.instance()
         if app is not None:
-            app.setStyleSheet(DARK_STYLESHEET if self.dark_mode else LIGHT_STYLESHEET)
+            palette = QPalette()
+            colors = (
+                ("#202722", "#e3e9e4", "#252e28", "#3b5941", "#ffffff")
+                if self.dark_mode else
+                ("#f3f4f1", "#26332c", "#ffffff", "#dce8dc", "#26332c")
+            )
+            for role, color in (
+                (QPalette.ColorRole.Window, colors[0]),
+                (QPalette.ColorRole.WindowText, colors[1]),
+                (QPalette.ColorRole.Text, colors[1]),
+                (QPalette.ColorRole.ButtonText, colors[1]),
+                (QPalette.ColorRole.Base, colors[2]),
+                (QPalette.ColorRole.Button, colors[2]),
+                (QPalette.ColorRole.Highlight, colors[3]),
+                (QPalette.ColorRole.HighlightedText, colors[4]),
+            ):
+                palette.setColor(role, QColor(color))
+            app.setPalette(palette)
+            stylesheet = DARK_STYLESHEET if self.dark_mode else LIGHT_STYLESHEET
+            app.setStyleSheet(
+                stylesheet.replace("__LIGHT_ARROW__", icon_path("chevron-light.svg").as_posix())
+                .replace("__DARK_ARROW__", icon_path("chevron-dark.svg").as_posix())
+            )
+
+    def _update_checked(self, release: object, manual: bool) -> None:
+        if not isinstance(release, UpdateRelease):
+            self.update_status.setText("Aplikasi sudah menggunakan versi terbaru yang tersedia.")
+            return
+        if self.available_update is None or self.available_update.version != release.version:
+            self.update_package = None
+            self.install_update_button.setText("Unduh update")
+        self.available_update = release
+        self.install_update_button.show()
+        self.update_status.setText(f"Update versi {release.version} tersedia.")
+        if manual or self._notified_version != release.version:
+            self._notified_version = release.version
+            notice = QMessageBox(self)
+            notice.setWindowTitle("Update DocuConvert tersedia")
+            notice.setText(
+                f"Versi {release.version} tersedia. "
+                "Buka Tentang untuk mengunduh dan memasang update."
+            )
+            notice.setStandardButtons(QMessageBox.StandardButton.Ok)
+            notice.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+            notice.open()
+
+    def _update_busy(self, busy: bool) -> None:
+        self.check_update_button.setEnabled(not busy)
+        self.install_update_button.setEnabled(not busy)
+
+    def _update_progress(self, percent: int) -> None:
+        self.update_status.setText(f"Mengunduh update: {percent}%")
+
+    def _update_failed(self, message: str, manual: bool) -> None:
+        self.update_status.setText(
+            "Belum dapat memeriksa atau mengunduh update. Akan dicoba lagi otomatis."
+        )
+        if manual:
+            QMessageBox.warning(self, "Update belum berhasil", message)
+
+    def _update_downloaded(self, package: object) -> None:
+        if isinstance(package, Path):
+            self.update_package = package
+            self.install_update_button.setText("Pasang update dan mulai ulang")
+            self.update_status.setText("Update sudah diunduh dan diverifikasi. Siap dipasang.")
+
+    def _install_update(self) -> None:
+        if self.update_package is None:
+            if self.available_update is not None:
+                self.update_status.setText("Memulai unduhan update…")
+                self.updates.download(self.available_update)
+            return
+        if self.job_controller and any(
+            job.status in {JobStatus.QUEUED, JobStatus.RUNNING}
+            for job in self.job_controller.runtime.jobs.jobs()
+        ):
+            QMessageBox.information(
+                self, "Proses masih berjalan", "Tunggu konversi selesai sebelum memasang update."
+            )
+            return
+        answer = QMessageBox.question(
+            self, "Pasang update",
+            "Pasang update sekarang? Aplikasi akan ditutup untuk memperbarui versi.",
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            if launch_update(self.update_package):
+                QApplication.instance().quit()
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Update belum berhasil", str(exc))

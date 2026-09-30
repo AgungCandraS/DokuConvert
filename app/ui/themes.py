@@ -1,8 +1,8 @@
 """Application-wide Qt Style Sheets and the shared DocuConvert color system."""
 
 LIGHT_STYLESHEET = """
-* { font-family: 'Segoe UI'; font-size: 13px; }
-QWidget#root, QWidget#root QWidget { color: #26332c; }
+* { font-size: 13px; }
+QWidget#root { color: #26332c; }
 QWidget#root, QWidget#content, QWidget#page, QWidget#jobPage { background: #f3f4f1; color: #26332c; }
 QWidget#sidebar { background: #e9ece7; border-right: 1px solid #d8ded8; }
 QLabel#brandIcon { border: 1px solid #d4ddd4; border-radius: 12px; background: #f8faf7; }
@@ -36,6 +36,10 @@ QPushButton#textButton:hover { color: #294b34; }
 QLineEdit#inputField, QComboBox, QSpinBox, QListWidget#fileList { color: #2b3830; border: 1px solid #d3dcd4; border-radius: 6px; padding: 7px 9px; background: #ffffff; selection-background-color: #dce8dc; }
 QLineEdit#inputField:focus, QComboBox:focus, QSpinBox:focus { border: 1px solid #62816a; }
 QComboBox, QSpinBox { min-height: 20px; }
+QComboBox QAbstractItemView { color: #26332c; background: #ffffff; border: 1px solid #91a593; selection-color: #26332c; selection-background-color: #dce8dc; outline: 0; }
+QComboBox QAbstractItemView::item { min-height: 28px; padding: 4px 8px; }
+QComboBox::drop-down { width: 28px; border: 0; }
+QComboBox::down-arrow { image: url(__LIGHT_ARROW__); width: 12px; height: 12px; }
 QListWidget#fileList { padding: 4px; }
 QListWidget#fileList::item { padding: 7px; border-radius: 4px; }
 QListWidget#fileList::item:selected { color: #263c2d; background: #e4eee3; }
@@ -76,8 +80,8 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 """
 
 DARK_STYLESHEET = """
-* { font-family: 'Segoe UI'; font-size: 13px; }
-QWidget#root, QWidget#root QWidget { color: #e3e9e4; }
+* { font-size: 13px; }
+QWidget#root { color: #e3e9e4; }
 QWidget#root, QWidget#content, QWidget#page, QWidget#jobPage { background: #202722; color: #e3e9e4; }
 QWidget#sidebar { background: #1d241f; border-right: 1px solid #374239; }
 QLabel#brandIcon { border: 1px solid #435147; border-radius: 12px; background: #29342c; }
@@ -111,6 +115,10 @@ QPushButton#textButton:hover { color: #d5e7d7; }
 QLineEdit#inputField, QComboBox, QSpinBox, QListWidget#fileList { color: #e1e9e2; border: 1px solid #465349; border-radius: 6px; padding: 7px 9px; background: #202822; selection-background-color: #3b5941; }
 QLineEdit#inputField:focus, QComboBox:focus, QSpinBox:focus { border: 1px solid #8cad91; }
 QComboBox, QSpinBox { min-height: 20px; }
+QComboBox QAbstractItemView { color: #e3e9e4; background: #252e28; border: 1px solid #708575; selection-color: #ffffff; selection-background-color: #3b5941; outline: 0; }
+QComboBox QAbstractItemView::item { min-height: 28px; padding: 4px 8px; }
+QComboBox::drop-down { width: 28px; border: 0; }
+QComboBox::down-arrow { image: url(__DARK_ARROW__); width: 12px; height: 12px; }
 QListWidget#fileList { padding: 4px; }
 QListWidget#fileList::item { padding: 7px; border-radius: 4px; }
 QListWidget#fileList::item:selected { color: #edf4ee; background: #34483a; }

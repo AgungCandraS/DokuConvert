@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import platform
 import shutil
 import subprocess
@@ -59,6 +60,7 @@ def main() -> int:
                 str(project_root / "DocuConvert.spec"),
             ],
             cwd=project_root,
+            env={**os.environ, "DOCUCONVERT_BUILD_VERSION": version},
             check=True,
         )
 
@@ -69,6 +71,13 @@ def main() -> int:
         bundled_libreoffice = resources / "tools" / "libreoffice" / "LibreOffice.app"
         bundled_libreoffice.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(libreoffice_app, bundled_libreoffice, symlinks=True)
+        # Diet bundle: pangkas data LibreOffice yang tidak dipakai konversi headless.
+        prune_script = project_root / "scripts" / "prune_libreoffice.py"
+        subprocess.run(
+            [sys.executable, str(prune_script), str(bundled_libreoffice)],
+            cwd=project_root,
+            check=True,
+        )
         shutil.copy2(
             project_root / "THIRD_PARTY_NOTICES.md",
             resources / "THIRD_PARTY_NOTICES.md",

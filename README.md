@@ -38,6 +38,14 @@ Pengguna tidak perlu memasang Python, LibreOffice secara terpisah, menjalankan D
 - Gabungkan, pisahkan, kompres, putar, hapus halaman PDF.
 - Tambahkan watermark dan proteksi password pada PDF.
 - Riwayat lokal, pembatalan job, pemilihan folder hasil, serta tema terang/gelap.
+- Nama hasil dapat diubah pada semua alat. Konversi Office banyak file memakai nama sumber masing-masing bila kolom nama dikosongkan; nama khusus diberi nomor berurutan.
+- Cek update otomatis saat startup dan setiap lima menit, serta tombol **Cek update** di halaman **Tentang**. Saat internet tersedia kembali, pemeriksaan berikutnya memberi notifikasi jika ada rilis baru.
+
+### Update dari aplikasi
+
+Pada halaman **Tentang**, unduh update lalu klik **Pasang update dan mulai ulang**. Unduhan diverifikasi dengan SHA-256 sebelum dapat dipasang. Windows memperbarui instalasi yang sama secara otomatis dan membuka aplikasi kembali, tanpa uninstall atau memasang ulang secara manual. macOS/Linux membuka pengelola paket sistem untuk memperbarui instalasi; ikuti konfirmasi OS dan buka aplikasi setelah selesai. Pengaturan, riwayat, dan dokumen pengguna tetap tersimpan. Pemasangan ditunda sampai konversi selesai.
+
+Update mendeteksi **GitHub Release stabil** yang versinya lebih tinggi, dengan installer sesuai OS/arsitektur. Push biasa hanya menghasilkan artifact CI dan belum menjadi update pengguna. Untuk menerbitkan update, buat tag `vX.Y.Z`; workflow yang sudah ada membuat release dan checksum. Versi runtime ikut versi build/tag, sehingga aplikasi tidak menawarkan versi yang sudah terpasang. Aplikasi yang dijalankan dari source bisa cek/unduh, tetapi pemasangan ditujukan untuk versi paket.
 
 Konversi PDF ke Word menggunakan `pdf2docx`; PDF hasil scan tidak menjalani OCR dan tata letak kompleks dapat berubah. Operasi PDF yang membaca dokumen terlindungi menerima password sumber; password proteksi tidak disimpan ke log atau riwayat. Hasil dipublikasikan dengan nama unik agar file sumber maupun hasil sebelumnya tidak tertimpa.
 
@@ -170,6 +178,30 @@ python scripts/build_linux_deb.py --version 0.1.0
 Paket `.deb` mencantumkan LibreOffice dan library sistem sebagai dependency agar package manager memasangnya.
 
 Skrip build menolak menimpa folder output yang sudah ada dan membuat `SHA256SUMS.txt` di samping installer.
+
+Installer Windows menggunakan kompresi LZMA2 solid dengan dictionary 128 MiB.
+Skrip build menolak hasil berukuran 500 MB atau lebih (MB desimal), tanpa menghapus
+komponen aplikasi. Batas ini dapat diubah maintainer lewat `-MaxInstallerSizeMB`.
+Build lokal Windows x64 versi 0.1.1 menghasilkan installer 385.696.585 byte
+(385,7 MB), dari payload lengkap sekitar 1,94 GB. Ukuran rilis berikutnya dapat
+berbeda; batas build tetap memeriksa ukuran hasil nyata.
+Payload yang sudah dibangun bisa dipakai lewat `-PayloadDirectory`; versi payload
+harus cocok dengan `-Version`. Gunakan `-CompilerExecutable` untuk compiler lokal.
+
+Uji installer pada folder terpisah di dalam `build` dengan
+`scripts/smoke_windows_installer.ps1 -Installer <installer.exe> -PayloadDirectory <folder-payload>`.
+Parameter internal `/VERIFY=1` menggunakan identitas instalasi berbeda dan tidak
+membuat shortcut, sehingga instalasi pengguna tidak tertimpa. Pengujian
+membandingkan SHA-256 seluruh file, memeriksa startup dan konversi Office, lalu
+memastikan uninstall tidak menghapus dokumen di luar folder instalasi uji.
+
+Build portable Windows juga membuat `DocuConvert-Portable-<versi>-Windows-x64.zip`
+dan checksum SHA-256. ZIP menggunakan kompresi lossless tingkat tinggi dan seluruh
+isinya diverifikasi sebelum diterbitkan. Ekstrak ZIP seluruhnya lalu jalankan
+`DocuConvert/DocuConvert.exe`. Ukuran unduhan menjadi lebih kecil; ukuran folder
+setelah diekstrak tetap sama karena seluruh komponen konversi dipertahankan.
+Gunakan `-SkipArchive` untuk build lokal yang tidak membutuhkan ZIP; build installer
+sudah menggunakan kompresi LZMA2 solid dan melewati ZIP tambahan.
 
 ## Build dan rilis melalui GitHub Actions
 

@@ -189,20 +189,31 @@ class PdfOperationsConverter(ConverterAdapter):
             raise BackendError("invalid_option", "Tingkat transparansi watermark tidak didukung.")
         output = workspace / f"{safe_stem(source.stem)}_watermark.pdf"
         font_file = _watermark_font()
+        font = pymupdf.Font(fontfile=str(font_file)) if font_file else pymupdf.Font("helv")
         with open_pdf(source, str(job.options.get("source_password", ""))) as document:
             for index, page in enumerate(document, start=1):
                 reporter.check_cancelled()
-                width, height = page.rect.width, page.rect.height
-                fontsize = min(40.0, max(16.0, width / max(len(text), 12) * 1.15))
+                # Work in the visible page coordinates, then undo the page rotation.
+                rect = page.rect
+                angle = 45 if position == "diagonal" else 0
+                # PDF text morph uses a y-up rotation; page points use y-down.
+                matrix = pymupdf.Matrix(-angle)
+                unit_width = font.text_length(text, fontsize=1)
+                unit_height = font.ascender - font.descender
+                bounds = pymupdf.Rect(0, 0, unit_width, unit_height) * matrix
+                fontsize = min(
+                    40.0, max(1.0, rect.width - 56) / max(bounds.width, 1),
+                    max(1.0, rect.height - 64) / max(bounds.height, 1),
+                )
+                center = pymupdf.Point(rect.width / 2, rect.height / 2)
                 if position == "bottom":
-                    point = pymupdf.Point(28, height - 32)
-                    rotation = 0
-                elif position == "diagonal":
-                    point = pymupdf.Point(width * 0.17, height * 0.62)
-                    rotation = 45
-                else:
-                    point = pymupdf.Point(width * 0.2, height * 0.52)
-                    rotation = 0
+                    center.y = rect.height - 32 - unit_height * fontsize / 2
+                baseline = pymupdf.Point(
+                    -unit_width * fontsize / 2,
+                    (font.ascender + font.descender) * fontsize / 2,
+                )
+                point = (baseline * matrix + center) * page.derotation_matrix
+                transform = pymupdf.Matrix(angle + page.rotation)
                 page.insert_text(
                     point,
                     text,
@@ -210,7 +221,7 @@ class PdfOperationsConverter(ConverterAdapter):
                     fontname="watermarkfont" if font_file else "helv",
                     fontfile=str(font_file) if font_file else None,
                     color=(0.45, 0.45, 0.45),
-                    morph=(point, pymupdf.Matrix(rotation)) if rotation else None,
+                    morph=(point, transform),
                     fill_opacity=opacity,
                     overlay=True,
                 )

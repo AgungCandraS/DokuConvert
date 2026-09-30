@@ -5,7 +5,11 @@ param(
 
     [string]$OutputDirectory,
 
-    [string]$PythonExecutable
+    [string]$PythonExecutable,
+
+    [string]$Version,
+
+    [switch]$SkipArchive
 )
 
 $ErrorActionPreference = "Stop"
@@ -73,6 +77,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller belum terpasang. Jalankan: .\.venv\Scripts\python.exe -m pip install -e '.[packaging]'"
 }
 
+if ($Version) { $env:DOCUCONVERT_BUILD_VERSION = $Version }
 & $PythonExecutable -m PyInstaller `
     --noconfirm `
     --clean `
@@ -126,16 +131,29 @@ if (-not $bundledSoffice) {
     throw "LibreOffice gagal dipaketkan; executable soffice tidak ditemukan di $libreOfficeTarget."
 }
 
+# Diet bundle: pangkas data LibreOffice yang tidak dipakai konversi headless
+# (kamus, bantuan, tema ikon non-default, bahasa non-ID/EN). Menghemat ~800 MB.
+$pruneScript = Join-Path $PSScriptRoot "prune_libreoffice.py"
+& $PythonExecutable $pruneScript $libreOfficeTarget
+if ($LASTEXITCODE -ne 0) {
+    throw "Pruning LibreOffice gagal (exit code $LASTEXITCODE)."
+}
+
 $notices = Join-Path $bundleRoot "THIRD_PARTY_NOTICES.md"
 Copy-Item -LiteralPath (Join-Path $projectRoot "THIRD_PARTY_NOTICES.md") -Destination $notices
 Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination (Join-Path $bundleRoot "LICENSE")
 @"
 DocuConvert Portable
 
-Jalankan DocuConvert.exe. LibreOffice sudah disertakan di folder tools\LibreOffice,
-sehingga instalasi LibreOffice terpisah tidak diperlukan pada perangkat Windows x64.
+Jalankan DocuConvert\DocuConvert.exe. Semua komponen DocuConvert sudah disertakan.
+Tidak perlu memasang komponen konversi terpisah pada perangkat Windows x64.
 Jangan pindahkan DocuConvert.exe keluar dari folder distribusinya.
 "@ | Set-Content -LiteralPath (Join-Path $OutputDirectory "README-PORTABLE.txt") -Encoding UTF8
 
 Write-Host "Paket portable berhasil dibuat: $bundleRoot"
-Write-Host "LibreOffice: $bundledSoffice"
+if (-not $SkipArchive) {
+    $archiveName = if ($Version) { "DocuConvert-Portable-$Version-Windows-x64.zip" } else { "DocuConvert-Portable-Windows-x64.zip" }
+    $archivePath = Join-Path (Split-Path $OutputDirectory -Parent) $archiveName
+    & $PythonExecutable (Join-Path $PSScriptRoot "package_portable.py") $OutputDirectory $archivePath
+    if ($LASTEXITCODE -ne 0) { throw "Pembuatan paket ZIP DocuConvert gagal." }
+}
